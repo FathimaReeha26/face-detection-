@@ -7,30 +7,32 @@ DATA_DIR = "data"
 OUTPUT_DIR = "outputs"
 CASCADE_PATH = os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
+SCALE_FACTOR = 1.1
+MIN_NEIGHBORS = 8
+MIN_SIZE = (30, 30)
 
 
-def list_images() -> list[str]:
-    if not os.path.isdir(DATA_DIR):
-        return []
-    return sorted(
-        os.path.join(DATA_DIR, name)
-        for name in os.listdir(DATA_DIR)
-        if name.lower().endswith(IMAGE_EXTENSIONS)
-        and os.path.isfile(os.path.join(DATA_DIR, name))
-    )
-
-
-def output_path(image_path: str) -> str:
-    stem = os.path.splitext(os.path.basename(image_path))[0]
-    return os.path.join(OUTPUT_DIR, f"result_{stem}.jpg")
+def is_image(name: str) -> bool:
+    return name.lower().endswith(IMAGE_EXTENSIONS)
 
 
 def main() -> None:
-    images = list_images()
+    if not os.path.isdir(DATA_DIR):
+        print(f"Missing {DATA_DIR}/ folder. Create it and add your images.")
+        sys.exit(1)
+
+    entries = sorted(os.listdir(DATA_DIR))
+    images = [name for name in entries if is_image(name) and os.path.isfile(os.path.join(DATA_DIR, name))]
+    others = [name for name in entries if name not in images]
+
+    for name in others:
+        print(f"Ignored {os.path.join(DATA_DIR, name)}: only images inside {DATA_DIR}/ are processed.")
+
     if not images:
         print(
             f"No images found in {DATA_DIR}/. "
-            f"Add images to the {DATA_DIR}/ folder and run again."
+            f"Supported types: {', '.join(IMAGE_EXTENSIONS)}. "
+            f"Add an image to {DATA_DIR}/ and run again."
         )
         sys.exit(1)
 
@@ -42,7 +44,8 @@ def main() -> None:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     total_faces = 0
-    for image_path in images:
+    for name in images:
+        image_path = os.path.join(DATA_DIR, name)
         image = cv2.imread(image_path)
         if image is None:
             print(f"Skipped {image_path}: could not read the file as an image.")
@@ -51,15 +54,15 @@ def main() -> None:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         faces = cascade.detectMultiScale(
             gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(30, 30),
+            scaleFactor=SCALE_FACTOR,
+            minNeighbors=MIN_NEIGHBORS,
+            minSize=MIN_SIZE,
         )
 
         for (x, y, w, h) in faces:
             cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        destination = output_path(image_path)
+        destination = os.path.join(OUTPUT_DIR, f"result_{os.path.splitext(name)[0]}.jpg")
         if not cv2.imwrite(destination, image):
             print(f"Skipped {image_path}: could not save to {destination}.")
             continue

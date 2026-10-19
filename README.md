@@ -45,6 +45,20 @@ A Python face detection project that uses OpenCV's built-in Haar cascade to find
 
 If `data/` contains no images, the script prints a clear message telling you to add images to `data/`.
 
+## Live camera
+
+From the project root, run:
+
+```powershell
+python src/detect_camera.py
+```
+
+A window opens showing the webcam feed with a green box and a live face count for every detected face.
+
+- Press `S` to save the current frame to `outputs/camera_<timestamp>.jpg`.
+- Press `Q` or `ESC` to quit.
+- If the camera cannot be opened, the script prints a clear message about checking the camera.
+
 ## Project layout
 
 - `data/` — test images (for example, `group.jpg`).
