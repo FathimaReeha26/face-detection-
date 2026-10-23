@@ -3,13 +3,12 @@ import sys
 
 import cv2
 
+from face_detector import FaceDetector
+from face_recognizer import UNKNOWN_LABEL, FaceRecognizer, draw_label
+
 DATA_DIR = "data"
 OUTPUT_DIR = "outputs"
-CASCADE_PATH = os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
-SCALE_FACTOR = 1.1
-MIN_NEIGHBORS = 8
-MIN_SIZE = (30, 30)
 
 
 def is_image(name: str) -> bool:
@@ -36,10 +35,26 @@ def main() -> None:
         )
         sys.exit(1)
 
-    cascade = cv2.CascadeClassifier(CASCADE_PATH)
-    if cascade.empty():
-        print(f"Could not load the Haar cascade from {CASCADE_PATH}.")
+    try:
+        detector = FaceDetector()
+        recognizer = FaceRecognizer()
+    except RuntimeError as error:
+        print(error)
         sys.exit(1)
+
+    print(f"Detector: {detector.name}")
+    if not recognizer.enabled:
+        print(
+            "Recognition model models/face_recognition_sface_2021dec.onnx is missing; "
+            "every face will be labelled Unknown."
+        )
+    elif not recognizer.has_known_faces:
+        print(
+            "No known faces enrolled; every face will be labelled Unknown. "
+            "Run src/enroll.py to add people."
+        )
+    else:
+        print(f"Known people: {', '.join(recognizer.people)}")
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -51,23 +66,20 @@ def main() -> None:
             print(f"Skipped {image_path}: could not read the file as an image.")
             continue
 
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        faces = cascade.detectMultiScale(
-            gray,
-            scaleFactor=SCALE_FACTOR,
-            minNeighbors=MIN_NEIGHBORS,
-            minSize=MIN_SIZE,
-        )
-
-        for (x, y, w, h) in faces:
-            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        faces = detector.detect(image)
+        labels = []
+        for detection in faces:
+            label, score = recognizer.identify(image, detection)
+            draw_label(image, detection.box, label)
+            labels.append(label if label == UNKNOWN_LABEL else f"{label} {score:.2f}")
 
         destination = os.path.join(OUTPUT_DIR, f"result_{os.path.splitext(name)[0]}.jpg")
         if not cv2.imwrite(destination, image):
             print(f"Skipped {image_path}: could not save to {destination}.")
             continue
 
-        print(f"{image_path}: {len(faces)} face(s) -> {destination}")
+        summary = ", ".join(labels) if labels else "none"
+        print(f"{image_path}: {len(faces)} face(s) [{summary}] -> {destination}")
         total_faces += len(faces)
 
     print(f"Processed {len(images)} image(s), {total_faces} face(s) found.")

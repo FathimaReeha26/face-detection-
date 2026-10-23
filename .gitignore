@@ -1,6 +1,37 @@
+# Virtual environments
 face_env/
 venv/
+env/
+.venv/
+
+# Python cache & artifacts
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+
+# OS metadata
 .DS_Store
+Thumbs.db
+
+# Output directory and logs
 outputs/
+*.log
+*.err
+
+# Databases & local credentials
+models/known_faces.json
+.env
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build and distribution
+build/
+dist/
+*.spec.bak
